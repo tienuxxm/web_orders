@@ -1,25 +1,23 @@
 FROM php:8.2-apache
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    libzip-dev zip unzip git curl libpng-dev \
-    && docker-php-ext-install pdo pdo_mysql zip gd
+# Cài extension
+RUN docker-php-ext-install pdo pdo_mysql
 
-# Enable Apache mod_rewrite
-RUN a2enmod rewrite
+# Copy project vào container
+COPY . /var/www/html
 
-# Set working directory
+# Chuyển working dir về Laravel
 WORKDIR /var/www/html
 
-# Copy app code
-COPY . .
+# Copy VirtualHost config nếu cần
+# COPY ./apache.conf /etc/apache2/sites-available/000-default.conf
+
+# Enable rewrite
+RUN a2enmod rewrite
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
-
-# Expose port 80
-EXPOSE 80
+RUN chown -R www-data:www-data /var/www/html
 
 # Start Apache
 CMD ["apache2-foreground"]
+
