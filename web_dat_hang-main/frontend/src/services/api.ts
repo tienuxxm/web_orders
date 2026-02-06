@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+const BACKEND_API_URL = 'http://127.0.0.1:8500/api'; 
 const basePath = import.meta.env.VITE_BASE_PATH;
 const api = axios.create({
-baseURL: basePath === '/' ? '/api' : `${basePath}api`,  headers: {
+// baseURL: basePath === '/' ? '/api' : `${basePath}api`, 
+baseURL: basePath === '/' ? '/api' : `${basePath}api`,
+ headers: {
     'Content-Type': 'application/json',
   },
 });

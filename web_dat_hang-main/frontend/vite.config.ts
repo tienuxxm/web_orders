@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     
     // 1. Base path lấy từ biến môi trường (Linh hoạt)
-    base: env.VITE_BASE_PATH, 
+    base:env.VITE_BASE_PATH, 
 
     server: {
       // 2. Cấu hình Proxy cho npm run dev
@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
 
     optimizeDeps: { exclude: ['lucide-react'] },
     build: {
-      outDir: '../public',
+      outDir: '../public/build-dat-hang',
       emptyOutDir: false,
     }
   };

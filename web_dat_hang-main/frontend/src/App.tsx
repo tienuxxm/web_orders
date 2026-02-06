@@ -7,7 +7,7 @@ import OrdersPage from './components/orders/OrdersPage';
 import ProductsPage from './components/products/ProductsPage';
 import CategoriesPage from './components/categories/CategoriesPage';
 import CustomersPage from './components/customers/CustomersPage';
-
+import SSOHandler from './pages/SSOHandler';  
 export default function App() {
   
   // 1. Component bảo vệ
@@ -38,7 +38,8 @@ export default function App() {
   return (
     <Routes>
       {/* --- PUBLIC ROUTE: LOGIN --- */}
-      {/* Đổi path thành /login cho chuẩn */}
+      <Route path="/sso-handler" element={<SSOHandler />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" 
         element={
           <PublicRoute>

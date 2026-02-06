@@ -30,20 +30,39 @@ class ProductController extends Controller
     {
         try {
             $query = Product::query();
-
-            // 1. Lọc sản phẩm Active (Blocked = 0)
             $query->orderBy('Code', 'asc');
             if ($request->has('q') && $request->q) {
-                $cleanKeyword = $this->normalizeString($request->q);
+                $keyword = $request->q;
+                $cleanKeyword = $this->normalizeString($keyword);
                 $query->where(function($sub) use ($cleanKeyword) {
-                
-                $sub->whereRaw("LOWER(REPLACE(REPLACE(REPLACE([Code], '-', ''), ' ', ''), '.', '')) LIKE ?", ["%{$cleanKeyword}%"])
-                
-               
-                    ->orWhereRaw("LOWER(REPLACE(REPLACE(REPLACE([Name], '-', ''), ' ', ''), '.', '')) COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?", ["%{$cleanKeyword}%"])
-                    
-                    ->orWhereRaw("LOWER(REPLACE(REPLACE([Variant], '-', ''), ' ', '')) COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?", ["%{$cleanKeyword}%"]);
-            });
+                    $makeSqlClean = function($colName) {
+                        return "LOWER(
+                            REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+                                {$colName}, 
+                                ' ', ''),    -- 1. Khoảng trắng
+                                '-', ''),    -- 2. Gạch ngang
+                                '.', ''),    -- 3. Dấu chấm
+                                ',', ''),    -- 4. Dấu phẩy
+                                '(', ''),    -- 5. Ngoặc mở
+                                ')', ''),    -- 6. Ngoặc đóng
+                                '/', ''),    -- 7. Gạch chéo (Mới)
+                                '\\', ''),   -- 8. Gạch ngược (Mới)
+                                '&', ''),    -- 9. Dấu và (Mới)
+                                '+', ''),    -- 10. Dấu cộng (Mới)
+                                ':', ''),    -- 11. Hai chấm (Mới)
+                                '_', '')     -- 12. Gạch dưới (Mới)
+                            )";
+                    };
+
+                    $sqlCleanName = $makeSqlClean("[Name]");
+                    $sqlCleanCode = $makeSqlClean("[Code]");
+                    $sqlCleanVariant = $makeSqlClean("[Variant]");
+
+                    // 3. Thực hiện so sánh
+                    $sub->whereRaw("{$sqlCleanCode} LIKE ?", ["%{$cleanKeyword}%"])
+                        ->orWhereRaw("{$sqlCleanName} COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?", ["%{$cleanKeyword}%"])
+                        ->orWhereRaw("{$sqlCleanVariant} COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?", ["%{$cleanKeyword}%"]);
+                });
             }
 
             if ($request->has('category_id') && $request->category_id !== 'all') {
@@ -65,22 +84,22 @@ class ProductController extends Controller
                 $uniqueId = $p->Code . ($p->Variant ? '-' . $p->Variant : '');
 
                 return [
-                    'id'          => $uniqueId,       
+                    'id'          => $uniqueId,
                     'code'        => $p->id,
                     'name'        => $p->name,
                     'price'       => $p->price,
-                    
+
                     // Bỏ quantity/min_stock
                     // 'quantity' => ..., 
-                    
+
                     'description' => $p->name,
                     'image'       => 'http://localhost:8000/images/default.png',
-                    
+
                     'category'    => $catName,
                     'category_id' => $catCode,
-                    
+
                     // Fix lỗi FE: Luôn trả về category_status là active (hoặc query thật nếu cần)
-                    'category_status' => 'active', 
+                    'category_status' => 'active',
                     'unit'  => $p->Unit,
                     'status'      => $p->status,
                     'color'       => $p->variant,
@@ -98,7 +117,6 @@ class ProductController extends Controller
                     'last_page'    => $products->lastPage(),
                 ],
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json(['message' => 'Lỗi', 'error' => $e->getMessage()], 500);
         }

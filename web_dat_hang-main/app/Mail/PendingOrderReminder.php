@@ -14,14 +14,13 @@ class PendingOrderReminder extends Mailable implements ShouldQueue
    public $user;
     public $pendingOrders;
     public $pendingMergeOrders;
-    public $token; 
+    
 
-    public function __construct($user, $pendingOrders, $pendingMergeOrders, $token)
+    public function __construct($user, $pendingOrders, $pendingMergeOrders)
     {
         $this->user = $user;
         $this->pendingOrders = $pendingOrders ?? collect([]);
         $this->pendingMergeOrders = $pendingMergeOrders ?? collect([]);
-        $this->token = $token; 
     }
    
     public function build()

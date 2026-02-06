@@ -391,7 +391,8 @@ const ProductsPage: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-panel glass-panel-dark p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
+        <div className={`p-6 rounded-2xl border border-white/5 relative overflow-hidden group ${theme === 'light' ? 'bg-white shadow-sm border-gray-200' : 'glass-panel glass-panel-dark border-white/5'
+        }`}>
           <div className="flex items-center justify-between z-10 relative">
             <div>
               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Tổng sản phẩm</p>
@@ -403,7 +404,8 @@ const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="glass-panel glass-panel-dark p-6 rounded-2xl border border-white/5 relative overflow-hidden group">
+        <div className={`p-6 rounded-2xl border border-white/5 relative overflow-hidden group ${theme === 'light' ? 'bg-white shadow-sm border-gray-200' : 'glass-panel glass-panel-dark border-white/5'
+        }`}>
           <div className="flex items-center justify-between z-10 relative">
             <div>
               <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">Đang hoạt động</p>

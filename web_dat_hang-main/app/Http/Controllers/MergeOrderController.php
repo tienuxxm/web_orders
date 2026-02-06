@@ -195,10 +195,10 @@ class MergeOrderController extends Controller
                 'message' => "Bạn không có quyền chuyển từ trạng thái [$currentStatus] sang [$newStatus]."
             ], 403);
         }
-        if (in_array($newStatus, [5]) && empty( $request->note_manager)) {
+        if (in_array($newStatus, [5]) && empty($request->note_manager)) {
             return response()->json(['message' => 'Bắt buộc nhập lý do vào ô Ghi chú khi Hủy.'], 422);
         }
-        
+
 
         $now = now();
         $userCode = $user->code;
@@ -242,7 +242,6 @@ class MergeOrderController extends Controller
         $user = JWTAuth::user();
         $group = $request->get('group', 'merged');
 
-        // Setup tên bảng để query raw
         $headerModel = new MergeOrder();
         $lineModel   = new MergeOrderItem();
         $rawHeaderTbl = $headerModel->getTable();
@@ -326,51 +325,70 @@ class MergeOrderController extends Controller
     {
         try {
             $user = JWTAuth::user();
+
+           
             $query = MergeOrder::with(['items', 'statusInfo', 'originalOrderItems.order'])
                 ->orderBy('CreatedDate', 'desc');
+
             if ($user->isInDepartment('Cung ứng') || $user->isInDepartment('Hành chính - Miền Nam')) {
                 $allowedIndustries = $user->allowedIndustries()->pluck('Code')->toArray();
                 $query->whereIn('Industry', $allowedIndustries);
             } elseif ($user->isRole('Sales')) {
-
                 $query->whereHas('originalOrderItems.order', function ($q) use ($user) {
                     $q->where('CreatedBy', $user->code);
                 });
-            } elseif ($user->isRole('Leader')) {
             }
+            
             $group = $request->get('group', 'merged');
+            $allowedStatusIds = [];
+
             if ($group === 'merged' || $group === 'merged_process') {
-                if ($user->isInDepartment('Cung ứng') || $user->isInDepartment('Hành chính - Miền Nam')) {
-                    $query->whereIn('Status', [8, 3, 2, 5]);
-                } elseif ($user->isRole('Leader')) {
-                    $query->whereIn('Status', [2, 3, 5]);
+                if ($user->isRole('Leader')) {
+                    $allowedStatusIds = [2, 3, 5];
                 } else {
-                    $query->whereIn('Status', [8, 2, 3, 5]);
+                    $allowedStatusIds = [8, 3, 2, 5];
                 }
-            } elseif ($group === 'completed' || $group === 'merged_completed') {
-                $query->whereIn('Status', [4, 11]);
+            }
+            elseif ($group === 'completed' || $group === 'merged_completed') {
+                $allowedStatusIds = [4, 11]; 
+            }
+
+            if ($request->has('status') && $request->status != 'all') {
+                $requestedStatus = (int)$request->status;
+
+                if (in_array($requestedStatus, $allowedStatusIds)) {
+                    $query->where('Status', $requestedStatus);
+                } else {
+                    $query->whereIn('Status', $allowedStatusIds);
+                }
+            } else {
+                if (!empty($allowedStatusIds)) {
+                    $query->whereIn('Status', $allowedStatusIds);
+                }
             }
             if ($request->has('q') && !empty($request->q)) {
                 $search = $request->q;
                 $query->where('DocumentNo', 'like', "%{$search}%");
             }
+
             $limit = $request->get('limit', 10);
             $orders = $query->paginate($limit);
+
             $data = $orders->getCollection()->map(function ($order) {
                 $totalAmount = $order->items->sum(fn($item) => $item->Quantity * $item->Price);
                 $firstOriginalItem = $order->originalOrderItems->first();
-                $supplierName = $firstOriginalItem?->order?->Supplier;
-                $intendedUse  = $firstOriginalItem?->order?->IntendedUse;
+                $originalOrderHeader = $firstOriginalItem?->order;
+
                 return [
                     'id'            => $order->DocumentNo,
                     'order_number'  => $order->DocumentNo,
-                    'supplier_name' => $supplierName,
-                    'intended_use'  => $intendedUse,
-                    'customer_name' => $order->CreatedBy,
+                    'supplier_name' => $originalOrderHeader->Supplier ?? 'N/A',
+                    'intended_use'  => $originalOrderHeader->IntendedUse ?? 'Gộp đơn',
+                    'customer_name' => $order->CreatedBy, 
                     'created_at'    => $order->CreatedDate,
                     'order_date'    => $order->PostingDate,
                     'status'        => (int)$order->Status,
-                    'status_name'   => $order->statusInfo?->Name,
+                    'status_name'   => $order->statusInfo->Name ?? 'Unknown',
                     'total'         => $totalAmount,
                     'items_count'   => $order->items->count(),
                     'items'         => $order->items->map(function ($it) {
@@ -394,31 +412,32 @@ class MergeOrderController extends Controller
             $orders->setCollection($data);
             return response()->json($orders);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Lỗi tải danh sách', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'message' => 'Lỗi tải danh sách',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
-    // GET /api/merge-orders/items/{id}/distribution
     public function getDistribution($id)
     {
         try {
-           $mergeItem = MergeOrderItem::with('mergeOrder')->findOrFail($id);
+            $mergeItem = MergeOrderItem::with('mergeOrder')->findOrFail($id);
 
-            // --- 👇 SỬA ĐOẠN NÀY: CHECK TRẠNG THÁI HỦY 👇 ---
-            // Nếu đơn cha bị hủy (Status = 5), trả về trạng thái 'cancelled' ngay lập tức
+
             if ($mergeItem->mergeOrder && $mergeItem->mergeOrder->Status == 5) {
                 return response()->json([
                     'product_name' => $mergeItem->ItemName,
                     'total_supply' => 0,
-                    'total_demand' => 0, // Hoặc tính sum nếu muốn hiển thị nhu cầu
-                    'status'       => 'cancelled', // Cờ đánh dấu để Frontend nhận biết
+                    'total_demand' => 0,
+                    'status'       => 'cancelled',
                     'distribution' => []
                 ]);
             }
 
             $sourceIds = array_filter(explode('-', $mergeItem->PurchaseLineID));
             if (empty($sourceIds)) return response()->json(['message' => 'Sản phẩm thêm thủ công.'], 200);
-       
+
             $originalItems = \App\Models\OrderItem::with(['order.user'])
                 ->whereIn('ID', $sourceIds)
                 ->get();
@@ -483,8 +502,6 @@ class MergeOrderController extends Controller
         }
     }
 
-    // app/Http/Controllers/MergeOrderController.php
-
     public function revert($id)
     {
         $user = JWTAuth::user();
@@ -492,46 +509,39 @@ class MergeOrderController extends Controller
         try {
             $mergeOrder = MergeOrder::findOrFail($id);
 
-            // 1. Chỉ cho phép thực hiện khi đơn MP đang ở trạng thái Hủy (5)
             if ($mergeOrder->Status != 5) {
                 return response()->json(['message' => 'Chỉ đơn hàng đã hủy mới có thể hoàn trả.'], 400);
             }
 
             $childItems = OrderItem::where('MergeHeaderID', $id)->get();
 
-            // Lấy danh sách mã đơn PO cha (unique)
             $poDocumentNos = $childItems->pluck('DocumentNo')->unique()->toArray();
 
-            // 3. Reset các dòng đơn con (OrderItems)
             OrderItem::where('MergeHeaderID', $id)
                 ->update([
-                    'MergeHeaderID' => null, // Gỡ liên kết
-                    'Status'        => 10,    // Quay về trạng thái Chốt
+                    'MergeHeaderID' => null,
+                    'Status'        => 10,
                     'ModifiedBy'    => $user->code,
                     'ModifiedDate'  => now()
                 ]);
 
-            // 4. Reset các đơn PO cha (Orders)
             if (!empty($poDocumentNos)) {
                 Order::whereIn('DocumentNo', $poDocumentNos)
                     ->update([
-                        'Status'       => 10, // Quay về trạng thái Chốt
+                        'Status'       => 10,
                         'ModifiedBy'   => $user->code,
                         'ModifiedDate' => now()
                     ]);
             }
 
-            // 5. Xóa dữ liệu bảng Merge
-            MergeOrderItem::where('DocumentNo', $id)->delete(); // Xóa Line
-            $mergeOrder->delete();                              // Xóa Header
+            MergeOrderItem::where('DocumentNo', $id)->delete();
+            $mergeOrder->delete();
 
             DB::connection('sqlsrv')->commit();
 
-            return response()->json(['message' => 'Đã hủy đơn gộp và trả lại trạng thái cho các đơn PO.'], 200);           
-
+            return response()->json(['message' => 'Đã hủy đơn gộp và trả lại trạng thái cho các đơn PO.'], 200);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Lỗi: ' . $e->getMessage()], 500);
         }
     }
-
 }

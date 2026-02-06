@@ -11,6 +11,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\MergeOrderController;
+use App\Http\Controllers\Api\SSOController;
+use App\Http\Controllers\ReportController;
 
 
 Route::post('register', [AuthController::class, 'register']);
@@ -20,9 +22,9 @@ Route::post('login',    [AuthController::class, 'login']);
 
 // 1. Route xử lý khi bấm link (Phải đặt tên name chính xác)
 Route::get('auth/email-login', [AuthController::class, 'loginViaEmail'])
-    ->name('auth.email-login'); // Tên này dùng trong Service để tạo link
-
-
+    ->name('auth.email_login'); // Tên này dùng trong Service để tạo link
+Route::post('auth/sso-verify', [AuthController::class, 'ssoLogin']);
+Route::post('/sso-login', [SSOController::class, 'loginByEmail']);
 
 Route::middleware('auth:api')->group(function () {
     Route::post('logout', [AuthController::class, 'logout']);
@@ -67,7 +69,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/merge-orders/items/{id}/distribution', [MergeOrderController::class, 'getDistribution']);
     Route::post('merge-orders/{id}/revert', [MergeOrderController::class, 'revert']);
     Route::get('merge-orders', [MergeOrderController::class, 'index']);
-    Route::post('/export-merged-orders-multi-months', [ExportController::class, 'exportMergedOrdersMultipleMonths']);
+    Route::get('/reports/user-activities', [ReportController::class, 'exportUserActivity']);
     Route::post('/export-merged-orders-multi-years', [ExportController::class, 'exportMergedOrdersMultipleYears']);
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/mark-read', [NotificationController::class, 'markRead']);

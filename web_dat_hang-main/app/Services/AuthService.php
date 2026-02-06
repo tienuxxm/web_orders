@@ -5,6 +5,7 @@ use App\Repositories\AuthRepository;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Jobs\SendEmailLoginJob;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Auth\Events\Login;
 use Exception;
 
 class AuthService
@@ -67,11 +68,7 @@ class AuthService
         }
 
         $user = $this->authRepo->syncUser($email, $password);
-
-       
         $userLoaded = $this->authRepo->getUserWithProfile($email);
-
-        if (!$userLoaded) throw new Exception('Lỗi đồng bộ dữ liệu người dùng', 500);
 
         $roleName = $userLoaded->roles->first()->Name ?? 'Guest'; 
         $deptName = $userLoaded->department->Name ?? 'N/A';      
@@ -84,6 +81,7 @@ class AuthService
 
         // 5. Tạo Token
         $token = JWTAuth::claims($customClaims)->fromUser($userLoaded);
+        event(new Login('api', $userLoaded, false));
         return [
             'token' => $token,
             'user'  => $userLoaded

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom'; // 👈 1. Import quan trọng
+import { Outlet, useNavigate , useSearchParams} from 'react-router-dom'; // 👈 1. Import quan trọng
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import BackgroundEffects from '../components/BackgroundEffects';
@@ -7,8 +7,8 @@ import { Toaster } from 'react-hot-toast';
 
 export default function DashboardLayout() {
   const navigate = useNavigate();
-  
-  // Lấy user từ localStorage
+  const searchParams = new URLSearchParams(location.search);  
+  const isEmbedded = sessionStorage.getItem('IS_EMBEDDED') === 'true' || searchParams.get('is_iframe') === '1';  // Lấy user từ localStorage
   const storedUser = localStorage.getItem('user');
   const user = storedUser ? JSON.parse(storedUser) : null;
 
@@ -18,8 +18,6 @@ export default function DashboardLayout() {
   // 2. Kiểm tra Auth ngay khi mount (Bảo mật)
   useEffect(() => {
     if (!user) {
-      // Nếu không tìm thấy user, đá về trang login
-      // Lưu ý: api.ts đã lo vụ hết hạn token, đây là check phụ
       navigate('/login');
     }
   }, [user, navigate]);
@@ -68,33 +66,34 @@ export default function DashboardLayout() {
         <BackgroundEffects />
         
         <div className="relative z-10 flex flex-col min-h-screen">          
-          <Header
+          {!isEmbedded && (
+            <Header
             user={user}
             onToggleSidebar={() => setCollapsed(!collapsed)}
             sidebarCollapsed={collapsed}
             // onPageChange={setCurrentPage} -> ❌ Đã xóa prop này
           />
+          )}
+          
 
           <div className="flex flex-1 pt-4 relative">
-            <Sidebar
+            {!isEmbedded && ( 
+               <Sidebar
               collapsed={collapsed}
               userRole={user.role}
               userDepartment={user.department}
               isMobile={isMobile}
               
             />
-            
+            )}
             <main 
               className={`flex-1 transition-all duration-300 overflow-y-auto ${
-                isMobile 
-                  ? 'ml-0 w-full' 
-                  : collapsed 
-                    ? 'ml-20'  
-                    : 'ml-64'
+                isEmbedded
+                ? 'ml-o w-full' :
+                (isMobile ? 'ml-0 w-full' : collapsed ? 'ml-20'  : 'ml-64')
               }`}
             >
-              <div className="p-4 sm:p-6 pb-20 animate-fade-in">
-                {/* 👇 3. OUTLET: Nơi React Router sẽ tự động điền các trang con vào */}
+              <div className={`animate-fade-in ${isEmbedded ? 'p-2' : 'p-4 sm:p-6 pb-20'}`}>                {/* 👇 3. OUTLET: Nơi React Router sẽ tự động điền các trang con vào */}
                 {/* (OrdersPage, MyOrdersPage, ProductsPage...) */}
                 <Outlet />
               </div>

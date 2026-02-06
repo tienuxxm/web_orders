@@ -495,7 +495,6 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ mode, filterType }) => {
     }
   };
   const handleUnmerge = async (mergeId: string) => {
-    // 1. Hiển thị Popup xác nhận (Giao diện Darkmode chuẩn)
     console.log("ID gửi lên server:", mergeId);
     const result = await MySwal.fire({
       title: 'Hủy Đơn Gộp?',
@@ -684,17 +683,20 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ mode, filterType }) => {
       setSearch(initialSearch);
     }
   }, [initialSearch]);
-  useEffect(() => {
+ // Tìm đoạn này trong OrdersPage.tsx
+useEffect(() => {
     const fetchStatuses = async () => {
       try {
-        const res = await api.get('order-statuses');
-        setAllStatuses(res.data);
+        const res = await api.get('order-statuses', {
+            params: { group: filterType } 
+        });
+        setAllStatuses(res.data); 
       } catch (error) {
-        console.error("Lỗi lấy danh sách trạng thái", error);
+        console.error("Lỗi API:", error);
       }
     };
     fetchStatuses();
-  }, []);
+}, [filterType]);
   useEffect(() => {
     setPage(1);
   }, [mode])
@@ -744,7 +746,7 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ mode, filterType }) => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-glass-dark transition-all duration-300">        <div>
         <h1 className="text-3xl font-bold text-bitex-primary dark:text-white">
-          Order Management
+          Quản lý đơn hàng
         </h1>
       </div>
         <div className='flex flex-wrap items-center gap-2 sm:gap-4 w-full md:w-auto'>
@@ -776,7 +778,8 @@ const OrdersPage: React.FC<OrdersPageProps> = ({ mode, filterType }) => {
           { label: config.processing.label, val: stats.processing, icon: config.processing.icon, color: config.processing.color, bg: config.processing.bg },
           { label: 'Thành Tiền', val: stats.revenue.toLocaleString(), icon: HandCoins, color: 'text-green-400', bg: 'bg-green-500/10', isCurrency: true }
         ].map((stat, idx) => (
-          <div key={idx} className="glass-panel glass-panel-dark p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group">
+          <div key={idx} className={ `p-4 sm:p-6 rounded-2xl border border-white/10 relative overflow-hidden group ${theme === 'light' ? 'bg-white shadow-sm border-gray-200' : 'glass-panel glass-panel-dark border-white/5'
+        }`}>
             <div className="flex justify-between items-start z-10 relative">
               <div>
                 <p className="text-blue-500 dark:text-gray-400 text-xs sm:text-sm font-medium uppercase tracking-wider">{stat.label}</p>

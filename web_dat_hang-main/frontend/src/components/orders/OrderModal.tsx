@@ -167,6 +167,10 @@ const OrderModal: React.FC<OrderModalProps> = ({ order, onSave, onClose, readOnl
   useEffect(() => {
 
     const fetchSuppliersData = async () => {
+      if (!selectedCategoryId) {
+        setSuppliers([]);
+        return;
+      }
       try {
         setLoadingSuppliers(true);
         const res = await api.get('/suppliers', {
@@ -207,7 +211,7 @@ const OrderModal: React.FC<OrderModalProps> = ({ order, onSave, onClose, readOnl
               code: item.product.code,
               name: item.product.name,
               price: item.product.price,
-              categoryId: item.product.categoryId, // Lưu ý map thêm cái này
+              categoryId: item.product.categoryId, 
               status: 'inactive',
               barcode: '',
               color: item.product.color
@@ -477,9 +481,12 @@ const OrderModal: React.FC<OrderModalProps> = ({ order, onSave, onClose, readOnl
 
 
 
-  const handleChange = () => {
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
+      [name]: value
     }));
   };
 

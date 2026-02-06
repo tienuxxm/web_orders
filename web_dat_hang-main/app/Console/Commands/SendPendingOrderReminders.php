@@ -111,12 +111,12 @@ class SendPendingOrderReminders extends Command
                     
                     $rawToken = $this->authService->generateTokenOnly($user);
                     Mail::to('tienht@bitex.com.vn')->send(
-                        new PendingOrderReminder($user, $pendingOrders, $pendingMergeOrders, $rawToken)
+                        new PendingOrderReminder($user, $pendingOrders, $pendingMergeOrders,$rawToken)
                     );
                     
                     // GỬI THẬT (Khi chạy Production thì mở dòng này, đóng dòng trên)
                     // Mail::to($user->email)->send(
-                    //    new PendingOrderReminder($user, $pendingOrders, $pendingMergeOrders, $magicLink)
+                    //    new PendingOrderReminder($user, $pendingOrders, $pendingMergeOrders,$rawToken)
                     // );
 
                     $this->info("📧 [{$user->Role}] Gửi cho {$user->email}: PO({$pendingOrders->count()}) - MP({$pendingMergeOrders->count()})");
